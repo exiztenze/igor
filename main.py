@@ -1,6 +1,9 @@
 from fastapi import FastAPI, UploadFile
 from transformers import pipeline
-import whisper
+# main.py'de değişiklik:
+# Whisper yerine VOSK kullanın (10x daha hafif)
+import vosk
+model = vosk.Model("vosk-model-small-tr")
 from gtts import gTTS
 import os
 
