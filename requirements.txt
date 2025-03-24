@@ -3,3 +3,5 @@ uvicorn==0.23.2
 vosk==0.3.45
 gtts==2.4.0
 python-multipart==0.0.6
+transformers>=4.26.0
+torch>=1.13.0
