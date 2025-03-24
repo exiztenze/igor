@@ -7,6 +7,24 @@ from vosk import Model, KaldiRecognizer
 from gtts import gTTS
 from io import BytesIO
 import logging
+from transformers import pipeline
+import os
+
+# Ortam değişkenlerinden token'ı al
+HF_TOKEN = os.getenv("HF_TOKEN")
+
+# Hugging Face pipeline'ları
+chatbot = pipeline(
+    "text-generation",
+    model="microsoft/DialoGPT-small",
+    use_auth_token=HF_TOKEN
+)
+
+whisper = pipeline(
+    "automatic-speech-recognition",
+    model="openai/whisper-tiny",
+    use_auth_token=HF_TOKEN
+)
 
 # Log ayarları
 logging.basicConfig(level=logging.INFO)
@@ -91,3 +109,8 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+@app.post("/hf_chat")
+async def hf_chat(request: TextRequest):
+    response = chatbot(request.text, max_length=100)[0]["generated_text"]
+    return {"response": response}
