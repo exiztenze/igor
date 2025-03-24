@@ -1,0 +1,6 @@
+fastapi
+transformers
+torch
+whisper
+gtts
+python-multipart
