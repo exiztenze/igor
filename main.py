@@ -1,34 +1,60 @@
-from fastapi import FastAPI, UploadFile
-from transformers import pipeline
-# main.py'de değişiklik:
-# Whisper yerine VOSK kullanın (10x daha hafif)
-import vosk
-model = vosk.Model("vosk-model-small-tr")
-from gtts import gTTS
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 import os
+import json
+from vosk import Model, KaldiRecognizer
+from gtts import gTTS
+from io import BytesIO
 
 app = FastAPI()
 
-# 1. Sohbet modeli (DialoGPT)
-igor_sohbet = pipeline("text-generation", model="microsoft/DialoGPT-small")
+# VOSK modelini yükle (Türkçe için küçük model)
+vosk_model = Model("vosk-model-small-tr")
 
-# 2. Ses tanıma modeli (Whisper)
-igor_kulak = whisper.load_model("tiny")
+class TextRequest(BaseModel):
+    text: str
 
-@app.post("/sor")
-async def sor(ses_dosyasi: UploadFile = None, metin: str = None):
-    # Eğer ses geldiyse, metne çevir
-    if ses_dosyasi:
-        ses_icerik = await ses_dosyasi.read()
-        with open("gelen_ses.ogg", "wb") as f:
-            f.write(ses_icerik)
-        metin = igor_kulak.transcribe("gelen_ses.ogg")["text"]
-    
-    # IGOR yanıt versin
-    yanit = igor_sohbet(metin, max_length=50)[0]["generated_text"]
-    
-    # Yanıtı sese çevir (TTS)
-    tts = gTTS(yanit, lang="tr")
-    tts.save("yanit.mp3")
-    
-    return {"metin": yanit, "ses": "yanit.mp3"}
+@app.post("/ses_oku")
+async def text_to_speech(request: TextRequest):
+    """Metni sese çevir (TTS)"""
+    try:
+        tts = gTTS(text=request.text, lang='tr')
+        audio_bytes = BytesIO()
+        tts.write_to_fp(audio_bytes)
+        return {"audio": audio_bytes.getvalue()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ses_anla")
+async def speech_to_text(audio_file: UploadFile = File(...)):
+    """Sesi metne çevir (STT)"""
+    try:
+        # Ses dosyasını geçici olarak kaydet
+        temp_file = "temp_audio.ogg"
+        with open(temp_file, "wb") as f:
+            f.write(await audio_file.read())
+        
+        # VOSK ile transkripsiyon
+        rec = KaldiRecognizer(vosk_model, 16000)
+        with open(temp_file, "rb") as f:
+            while True:
+                data = f.read(4000)
+                if len(data) == 0:
+                    break
+                rec.AcceptWaveform(data)
+        
+        result = json.loads(rec.FinalResult())
+        os.remove(temp_file)  # Geçici dosyayı sil
+        
+        return {"text": result.get("text", "")}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/")
+async def health_check():
+    return {"status": "IGOR çalışıyor!"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=10000)
