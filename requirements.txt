@@ -1,8 +1,6 @@
-fastapi
-transformers
-torch
-whisper
-gtts
-python-multipart
 uvicorn==0.23.2
 fastapi==0.103.1
+transformers==4.33.0
+torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
+openai-whisper==20231106
+gtts==2.4.0
