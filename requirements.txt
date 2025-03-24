@@ -1,6 +1,5 @@
-uvicorn==0.23.2
 fastapi==0.103.1
-transformers==4.33.0
-torch==2.0.1 --index-url https://download.pytorch.org/whl/cpu
-openai-whisper==20231106
+uvicorn==0.23.2
+vosk==0.3.45
 gtts==2.4.0
+python-multipart==0.0.6
